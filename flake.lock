@@ -132,6 +132,7 @@
         "nixpkgs": "nixpkgs",
         "official-packages": "official-packages",
         "pre-commit-hooks": "pre-commit-hooks",
+        "typst-ts-mode": "typst-ts-mode",
         "utils": "utils"
       }
     },
@@ -163,6 +164,22 @@
         "owner": "nix-systems",
         "repo": "default",
         "type": "github"
+      }
+    },
+    "typst-ts-mode": {
+      "flake": false,
+      "locked": {
+        "lastModified": 1701853682,
+        "narHash": "sha256-okrkMrcEH1CdCs5uOYdxiOSJ5br3jPLw8cVExL+3jkA=",
+        "ref": "refs/heads/main",
+        "rev": "361dfe6001d5299547219a63381d70433877b926",
+        "revCount": 33,
+        "type": "git",
+        "url": "https://git.sr.ht/~meow_king/typst-ts-mode"
+      },
+      "original": {
+        "type": "git",
+        "url": "https://git.sr.ht/~meow_king/typst-ts-mode"
       }
     },
     "utils": {

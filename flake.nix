@@ -3,33 +3,53 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     utils.url = "github:numtide/flake-utils";
+
     pre-commit-hooks = {
       url = "github:cachix/pre-commit-hooks.nix";
       inputs.nixpkgs.follows = "nixpkgs";
     };
+
     official-packages = {
       url = "github:typst/packages";
       flake = false;
     };
+
+    typst-ts-mode = {
+      url = "git+https://git.sr.ht/~meow_king/typst-ts-mode";
+      flake = false;
+    };
   };
-  outputs = { self, nixpkgs, utils, pre-commit-hooks, official-packages, ... }:
+  outputs = { self, nixpkgs, utils, pre-commit-hooks, official-packages, typst-ts-mode, ... }:
     with utils.lib;
     with nixpkgs.lib;
     with builtins;
     rec {
-      overlays.default = (final: prev: {
-        # Merging with prev.typst2nix.registery makes sure that order of overlay application doesn't matter
-        typst2nix.registery =
-          # Get prev if exists
-          (prev.typst2nix.registery or { }) // (mapAttrsRecursive
-            (n: v: (helpers.bundleTypstPkg
-              {
-                pkgs = final;
-                path = v;
-                namespace = head n;
-              }))
-            (helpers.listPackages "${official-packages}/packages"));
-      });
+      overlays = rec {
+        default = registery;
+        registery = (final: prev: {
+          # Merging with prev.typst2nix.registery makes sure that order of overlay application doesn't matter
+          typst2nix = {
+            registery =
+              # Get prev if exists
+              (prev.typst2nix.registery or { }) // (mapAttrsRecursive
+                (n: v: (helpers.bundleTypstPkg
+                  {
+                    pkgs = final;
+                    path = v;
+                    namespace = head n;
+                  }))
+                (helpers.listPackages "${official-packages}/packages"));
+          };
+        });
+
+        emacsTooling = (final: prev: {
+          typst-ts-mode = final.elpaBuild {
+            pname = "typst-ts-mode";
+            version = "git";
+            src = "${typst-ts-mode}/typst-ts-mode.el";
+          };
+        });
+      };
 
       helpers = rec {
         mkTypstEnv = pkgs: src:
@@ -148,6 +168,9 @@
         };
 
         packages = {
+          # WARN: this may not work for other emacs distribution
+          typst-ts-mode = ((pkgs.emacsPackagesFor pkgs.emacs29).overrideScope self.overlays.emacsTooling).typst-ts-mode;
+
           cetz-manual = (self.helpers.buildTypst rec {
             inherit pkgs;
             src = "${official-packages}/packages/preview/cetz/${version}";
