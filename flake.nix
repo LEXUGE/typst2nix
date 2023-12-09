@@ -32,25 +32,33 @@
       });
 
       helpers = rec {
-        buildTypst = { pkgs, pname, version, src, path, ext ? "pdf" }:
+        mkTypstEnv = pkgs: src:
           let
             registery = pkgs.typst2nix.registery;
             dependencies = getDependencies [ ] registery src;
           in
+          pkgs.symlinkJoin {
+            name = "typstEnv";
+            paths = (map (p: attrByPath p.path null registery) dependencies);
+          };
+
+        mkWrappedTypst = pkgs: src: with pkgs; (runCommand "typst-wrapped"
+          { nativeBuildInputs = [ makeWrapper ]; }
+          ''
+            mkdir -p $out/bin
+            makeWrapper ${typst}/bin/typst $out/bin/typst --set XDG_DATA_HOME ${mkTypstEnv pkgs src}
+          '');
+
+
+        buildTypst = { pkgs, pname, version, src, path, ext ? "pdf" }:
           (pkgs.stdenv.mkDerivation rec {
             inherit pname version src;
 
-            buildInputs = [ pkgs.typst ];
-            env =
-              let
-                joinedDeps = pkgs.symlinkJoin {
-                  name = pname + version + "joinedDeps";
-                  paths = (map (p: attrByPath p.path null registery) dependencies);
-                };
-              in
-              {
-                XDG_DATA_HOME = joinedDeps;
-              };
+            buildInputs = [ (mkWrappedTypst pkgs src) ];
+            # Alternatively, use
+            # env = {
+            #   XDG_DATA_HOME = (mkTypstEnv pkgs src);
+            # };
 
             buildPhase = ''
               mkdir $out
