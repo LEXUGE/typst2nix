@@ -21,8 +21,7 @@
         # Merging with prev.typst2nix.registery makes sure that order of overlay application doesn't matter
         typst2nix.registery =
           # Get prev if exists
-          (if attrByPath [ "typst2nix" "registery" ] null prev != null then prev.typst2nix.registery else { })
-          // (mapAttrsRecursive
+          (prev.typst2nix.registery or { }) // (mapAttrsRecursive
             (n: v: (helpers.bundleTypstPkg
               {
                 pkgs = final;
