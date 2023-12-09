@@ -55,7 +55,7 @@
 
             buildPhase = ''
               mkdir $out
-              typst compile ${path} $out/${pname}.${ext}
+              typst compile ${path} $out/${pname}.${ext} --root .
             '';
           });
 
@@ -147,6 +147,40 @@
             path = "./manual.typ";
             version = "0.1.2";
             pname = "cetz-manual";
+          });
+
+          anti-matter-manual = (self.helpers.buildTypst rec {
+            inherit pkgs;
+            src = "${official-packages}/packages/preview/anti-matter/${version}";
+            path = "./docs/manual.typ";
+            version = "0.1.1";
+            pname = "anti-matter-manual";
+          });
+
+          physica-manual = (self.helpers.buildTypst rec {
+            inherit pkgs;
+            src = pkgs.fetchFromGitHub {
+              owner = "Leedehai";
+              repo = "typst-physics";
+              rev = "v0.8.1";
+              hash = "sha256-uyp2t8Fmewp7/yolFECSBkAH6iPvHKvzRqkC32SmWbo=";
+            };
+            path = "./physica-manual.typ";
+            version = "git";
+            pname = "physica-manual";
+          });
+
+          quill-guide = (self.helpers.buildTypst rec {
+            inherit pkgs;
+            src = pkgs.fetchFromGitHub {
+              owner = "Mc-Zen";
+              repo = "quill";
+              rev = "fa4770a4beef1da987ed3146caa0d4afbb8ec1d8";
+              hash = "sha256-L78Y+qXjyE8I8Mv56ZpjciACOBipSLoLJEdeieM/aBI=";
+            };
+            path = "./docs/guide/quill-guide.typ";
+            version = "git";
+            pname = "quill-guide";
           });
         };
 
