@@ -3,7 +3,6 @@
   inputs = {
     nixpkgs.url = "github:NixOS/nixpkgs/nixpkgs-unstable";
     utils.url = "github:numtide/flake-utils";
-    # rust-overlay.url = "github:oxalica/rust-overlay";
     pre-commit-hooks = {
       url = "github:cachix/pre-commit-hooks.nix";
       inputs.nixpkgs.follows = "nixpkgs";
@@ -19,29 +18,36 @@
     with builtins;
     rec {
       overlays.default = (final: prev: {
-        typst2nix.registery = (mapAttrsRecursive
-          (n: v: (helpers.bundleTypstPkg
-            {
-              stdenv = prev.stdenv;
-              path = v;
-              namespace = head n;
-              registery = final.typst2nix.registery;
-            }))
-          (helpers.listPackages "${official-packages}/packages"));
+        # Merging with prev.typst2nix.registery makes sure that order of overlay application doesn't matter
+        typst2nix.registery =
+          # Get prev if exists
+          (if attrByPath [ "typst2nix" "registery" ] null prev != null then prev.typst2nix.registery else { })
+          // (mapAttrsRecursive
+            (n: v: (helpers.bundleTypstPkg
+              {
+                pkgs = final;
+                path = v;
+                namespace = head n;
+              }))
+            (helpers.listPackages "${official-packages}/packages"));
       });
 
-      helpers = {
-        buildTypstPdf = { pkgs, pname, version, src, path }:
+      helpers = rec {
+        buildTypst = { pkgs, pname, version, src, path, ext ? "pdf" }:
           let
             registery = pkgs.typst2nix.registery;
-            dependencies = flatten (map (p: [ p ] ++ (attrByPath (p.path ++ [ "passthru" "typstDeps" ]) [ ] registery)) (helpers.getDependencies src));
+            dependencies = getDependencies [ ] registery src;
           in
           (pkgs.stdenv.mkDerivation rec {
             inherit pname version src;
 
             buildInputs = [ pkgs.typst ];
             env =
-              let joinedDeps = pkgs.symlinkJoin { name = pname + version + "joinedDeps"; paths = (map (p: attrByPath p.path null registery) dependencies); };
+              let
+                joinedDeps = pkgs.symlinkJoin {
+                  name = pname + version + "joinedDeps";
+                  paths = (map (p: attrByPath p.path null registery) dependencies);
+                };
               in
               {
                 XDG_DATA_HOME = joinedDeps;
@@ -49,16 +55,17 @@
 
             buildPhase = ''
               mkdir $out
-              typst compile ${path} $out/${pname}.pdf
+              typst compile ${path} $out/${pname}.${ext}
             '';
           });
 
-        bundleTypstPkg = { stdenv, path, registery, namespace }:
+        # TODO: implement `exclude` keyword.
+        bundleTypstPkg = { pkgs, path, namespace, }:
           let
             typstManifest = (importTOML (path + "/typst.toml"));
-            dependencies = (helpers.getDependencies path);
+            registery = pkgs.typst2nix.registery;
           in
-          (stdenv.mkDerivation rec {
+          (pkgs.stdenv.mkDerivation rec {
             pname = typstManifest.package.name;
             version = typstManifest.package.version;
             src = path;
@@ -68,18 +75,28 @@
               cp -r . $out/typst/packages/${namespace}/${pname}/${version}/
             '';
 
-            passthru.typstDeps = flatten (map (p: [ p ] ++ (attrByPath (p.path ++ [ "passthru" "typstDeps" ]) [ ] registery)) dependencies);
-            # passthru.typstDeps = dependencies;
+            passthru.typstDeps = getDependencies [ "${namespace}" "${pname}" ] registery path;
           });
+
+        # Get collected dependencies (i.e. including the dependencies of the dependencies)
+        # NOTE: An example of testing if collected dependency works: preview/anti-matter
+        # NOTE: the entire dependecy resolution is doing some sort of passive failing
+        # If a package cannot be found in registery, nothing happens.
+        # Only will typst error if it is an actual package import (i.e. not in comment section)
+        # This saves us from determining and/or wrangling with "fake import".
+        getDependencies = selfPath: registery: path:
+          flatten (map (p: [ p ] ++ (attrByPath (p.path ++ [ "passthru" "typstDeps" ]) [ ] registery))
+            (getDependencies' selfPath path));
 
         # get dependencies of a specific package of a specific version using regex on each line.
         # regex for matching dependencies:
         # .*@([[:alnum:]]+)/([[:alnum:]]+):([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+).*
-        getDependencies = path:
+        getDependencies' = selfPath: path:
           let
             filtered = filter (p: hasSuffix ".typ" p) (filesystem.listFilesRecursive path);
           in
-          filter (p: p.path != null) (flatten (map
+          # Order matters, otherwise `take N null` will error
+          filter (p: (p.path != null) && ((take 2 p.path) != selfPath)) (flatten (map
             (p:
               let
                 lines = splitString "\n" (readFile p);
@@ -104,7 +121,7 @@
               if pathExists (path + "/typst.toml") then
                 path
               else
-                (helpers.listPackages path)
+                (listPackages path)
             )
             filtered);
       };
@@ -123,16 +140,15 @@
           nativeBuildInputs = with pkgs; [ typst typstfmt ];
         };
 
-        packages.manual = (self.helpers.buildTypstPdf {
-          inherit pkgs;
-          # src = "${official-packages}/packages/preview/cetz/0.1.2";
-          # path = "./manual.typ";
-          src = ./.;
-          path = "test.typ";
-          version = "0.1.2";
-          pname = "manual";
-        });
-        # packages = pkgs.typst2nix;
+        packages = {
+          cetz-manual = (self.helpers.buildTypst rec {
+            inherit pkgs;
+            src = "${official-packages}/packages/preview/cetz/${version}";
+            path = "./manual.typ";
+            version = "0.1.2";
+            pname = "cetz-manual";
+          });
+        };
 
         checks = {
           pre-commit-check = pre-commit-hooks.lib.${system}.run {
@@ -151,6 +167,6 @@
               };
             };
           };
-        };
+        } // packages;
       });
 }
