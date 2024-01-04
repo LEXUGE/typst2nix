@@ -223,7 +223,7 @@
               shellcheck.enable = true;
               shfmt.enable = true;
 
-              typstfmt = {
+              typstfmt = mkForce {
                 enable = true;
                 name = "Typst Format";
                 entry = "${pkgs.typstfmt}/bin/typstfmt";
