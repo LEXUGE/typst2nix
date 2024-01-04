@@ -130,7 +130,7 @@
               in
               map
                 (l: {
-                  path = match ".*@([[:alnum:]]+)/([[:alnum:]]+):([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+).*" l;
+                  path = match ".*@([[:alnum:]-]+)/([[:alnum:]-]+):([[:digit:]]+\.[[:digit:]]+\.[[:digit:]]+).*" l;
                 })
                 lines
             )
