@@ -192,8 +192,8 @@
             src = pkgs.fetchFromGitHub {
               owner = "Leedehai";
               repo = "typst-physics";
-              rev = "v0.8.1";
-              hash = "sha256-uyp2t8Fmewp7/yolFECSBkAH6iPvHKvzRqkC32SmWbo=";
+              rev = "v0.9.2";
+              hash = "sha256-iHh29dVO9Ry4SgQ24mk3xz1Pat6RZ0u/Av9It2s1gb0=";
             };
             path = "./physica-manual.typ";
             version = "git";

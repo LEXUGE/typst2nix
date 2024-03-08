@@ -9,6 +9,7 @@ jobs:
       with:
         # Nix Flakes doesn't work on shallow clones
         fetch-depth: 0
-    - uses: cachix/install-nix-action@v20
+    - uses: cachix/install-nix-action@v26
     # Run the general flake checks
     - run: nix flake check -vL
+    - run: nix build .#physica-manual
