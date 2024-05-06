@@ -173,9 +173,14 @@
 
           cetz-manual = (self.helpers.buildTypst rec {
             inherit pkgs;
-            src = "${official-packages}/packages/preview/cetz/${version}";
+            src = pkgs.fetchFromGitHub {
+              owner = "cetz-package";
+              repo = "cetz";
+              rev = "e06775f273d03b07a3ef1734defff5121c03524b";
+              hash = "sha256-zqU5GxRyAx7JtvOlH9YIyvhrbOV9o/2zWsoVe8A/Ah8=";
+            };
             path = "./manual.typ";
-            version = "0.1.2";
+            version = "0.2.2";
             pname = "cetz-manual";
           });
 
@@ -192,8 +197,8 @@
             src = pkgs.fetchFromGitHub {
               owner = "Leedehai";
               repo = "typst-physics";
-              rev = "v0.9.2";
-              hash = "sha256-iHh29dVO9Ry4SgQ24mk3xz1Pat6RZ0u/Av9It2s1gb0=";
+              rev = "v0.9.3";
+              hash = "sha256-XfIKa2chLeX6fmIJ8wogCktMOe1L658SkrsjNihOWbs=";
             };
             path = "./physica-manual.typ";
             version = "git";
@@ -205,8 +210,8 @@
             src = pkgs.fetchFromGitHub {
               owner = "Mc-Zen";
               repo = "quill";
-              rev = "fa4770a4beef1da987ed3146caa0d4afbb8ec1d8";
-              hash = "sha256-L78Y+qXjyE8I8Mv56ZpjciACOBipSLoLJEdeieM/aBI=";
+              rev = "v0.2.1";
+              hash = "sha256-LkasVbT769VzUtRuFXwCJ6aSEze9Gob5rlx61Z63qf4=";
             };
             path = "./docs/guide/quill-guide.typ";
             version = "git";
