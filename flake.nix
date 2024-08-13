@@ -13,13 +13,8 @@
       url = "github:typst/packages";
       flake = false;
     };
-
-    typst-ts-mode = {
-      url = "git+https://git.sr.ht/~meow_king/typst-ts-mode";
-      flake = false;
-    };
   };
-  outputs = { self, nixpkgs, utils, pre-commit-hooks, official-packages, typst-ts-mode, ... }:
+  outputs = { self, nixpkgs, utils, pre-commit-hooks, official-packages, ... }:
     with utils.lib;
     with nixpkgs.lib;
     with builtins;
@@ -39,14 +34,6 @@
                     namespace = head n;
                   }))
                 (helpers.listPackages "${official-packages}/packages"));
-          };
-        });
-
-        emacsTooling = (final: prev: {
-          typst-ts-mode = final.elpaBuild {
-            pname = "typst-ts-mode";
-            version = "git";
-            src = "${typst-ts-mode}/typst-ts-mode.el";
           };
         });
       };
@@ -168,9 +155,6 @@
         };
 
         packages = {
-          # WARN: this may not work for other emacs distribution
-          typst-ts-mode = ((pkgs.emacsPackagesFor pkgs.emacs29).overrideScope self.overlays.emacsTooling).typst-ts-mode;
-
           cetz-manual = (self.helpers.buildTypst rec {
             inherit pkgs;
             src = pkgs.fetchFromGitHub {
