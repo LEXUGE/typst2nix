@@ -13,8 +13,10 @@
       url = "github:typst/packages";
       flake = false;
     };
+
+    rust-overlay.url = "github:oxalica/rust-overlay";
   };
-  outputs = { self, nixpkgs, utils, pre-commit-hooks, official-packages, ... }:
+  outputs = { self, nixpkgs, utils, pre-commit-hooks, rust-overlay, official-packages, ... }:
     with utils.lib;
     with nixpkgs.lib;
     with builtins;
@@ -35,6 +37,9 @@
                   }))
                 (helpers.listPackages "${official-packages}/packages"));
           };
+        });
+        utils = (final: prev: {
+          typst-package-bunlder = self.packages."${prev.pkgs.system}".typst-package-bunlder;
         });
       };
 
@@ -57,7 +62,8 @@
           '');
 
 
-        buildTypst = { pkgs, pname, version, src, path, ext ? "pdf" }:
+        # Control root with `src`, control the entry point with `path`
+        buildTypstDoc = { pkgs, pname, version, src, path, ext ? "pdf" }:
           (pkgs.stdenv.mkDerivation rec {
             inherit pname version src;
 
@@ -84,9 +90,20 @@
             version = typstManifest.package.version;
             src = path;
 
+            buildInputs = with pkgs; [ typst-package-bunlder ];
+
+            buildPhase = ''
+              tmpdir=$(mktemp -d)
+
+              mkdir -p "$tmpdir/packages/${namespace}/${pname}/${version}"
+              cp -r . "$tmpdir/packages/${namespace}/${pname}/${version}/"
+
+              bundler -d $tmpdir/packages -o $tmpdir/bundled.tar.gz
+            '';
+
             installPhase = ''
-              mkdir -p $out/typst/packages/${namespace}/${pname}/${version}
-              cp -r . $out/typst/packages/${namespace}/${pname}/${version}/
+              mkdir -p $out/typst/packages/
+              tar -xvzf $tmpdir/bundled.tar.gz -C $out/typst/packages
             '';
 
             passthru.typstDeps = getDependencies [ "${namespace}" "${pname}" ] registery path;
@@ -144,18 +161,39 @@
       let
         pkgs = import nixpkgs {
           inherit system;
-          overlays = [ self.overlays.default ];
+          overlays = [ rust-overlay.overlays.default self.overlays.default self.overlays.utils ];
+        };
+        rustBin = pkgs.rust-bin.stable.latest.default.override {
+          extensions = [ "rust-analyzer" ];
+        };
+        rustPlatform = pkgs.makeRustPlatform {
+          cargo = rustBin;
+          rustc = rustBin;
         };
       in
       rec {
         # nix develop
         devShells.default = pkgs.mkShell {
           inherit (self.checks.${system}.pre-commit-check) shellHook;
-          nativeBuildInputs = with pkgs; [ typst typstfmt ];
+          nativeBuildInputs = with pkgs; [ typst rustBin ];
         };
 
         packages = {
-          cetz-manual = (self.helpers.buildTypst rec {
+          typst-package-bunlder = rustPlatform.buildRustPackage {
+            pname = "typst-package-bundler";
+            version = "git";
+
+            src = ./.;
+
+            cargoLock = {
+              lockFile = ./Cargo.lock;
+              outputHashes = {
+                "typst-syntax-0.11.0" = "sha256-+9uNtoAUjFiUO9dSh2a7n+VxZUvUz7iBGGGO0F9/U/o=";
+              };
+            };
+          };
+
+          cetz-manual = (self.helpers.buildTypstDoc rec {
             inherit pkgs;
             src = pkgs.fetchFromGitHub {
               owner = "cetz-package";
@@ -168,7 +206,7 @@
             pname = "cetz-manual";
           });
 
-          anti-matter-manual = (self.helpers.buildTypst rec {
+          anti-matter-manual = (self.helpers.buildTypstDoc rec {
             inherit pkgs;
             src = "${official-packages}/packages/preview/anti-matter/${version}";
             path = "./docs/manual.typ";
@@ -176,7 +214,7 @@
             pname = "anti-matter-manual";
           });
 
-          physica-manual = (self.helpers.buildTypst rec {
+          physica-manual = (self.helpers.buildTypstDoc rec {
             inherit pkgs;
             src = pkgs.fetchFromGitHub {
               owner = "Leedehai";
@@ -189,7 +227,7 @@
             pname = "physica-manual";
           });
 
-          quill-guide = (self.helpers.buildTypst rec {
+          quill-guide = (self.helpers.buildTypstDoc rec {
             inherit pkgs;
             src = pkgs.fetchFromGitHub {
               owner = "Mc-Zen";
@@ -212,12 +250,15 @@
               shellcheck.enable = true;
               shfmt.enable = true;
 
-              typstfmt = mkForce {
-                enable = true;
-                name = "Typst Format";
-                entry = "${pkgs.typstfmt}/bin/typstfmt";
-                files = "\\.(typ)$";
-              };
+              rustfmt.enable = true;
+
+              # typstfmt is not working well
+              # typstfmt = mkForce {
+              #   enable = true;
+              #   name = "Typst Format";
+              #   entry = "${pkgs.typstfmt}/bin/typstfmt";
+              #   files = "\\.(typ)$";
+              # };
             };
           };
         } // packages;
