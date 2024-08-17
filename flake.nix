@@ -22,8 +22,7 @@
     with builtins;
     rec {
       overlays = rec {
-        default = registery;
-        registery = (final: prev: {
+        default = (final: prev: {
           # Merging with prev.typst2nix.registery makes sure that order of overlay application doesn't matter
           typst2nix = {
             registery =
@@ -37,8 +36,6 @@
                   }))
                 (helpers.listPackages "${official-packages}/packages"));
           };
-        });
-        utils = (final: prev: {
           typst-package-bunlder = self.packages."${prev.pkgs.system}".typst-package-bunlder;
         });
       };
@@ -161,7 +158,7 @@
       let
         pkgs = import nixpkgs {
           inherit system;
-          overlays = [ rust-overlay.overlays.default self.overlays.default self.overlays.utils ];
+          overlays = [ rust-overlay.overlays.default self.overlays.default ];
         };
         rustBin = pkgs.rust-bin.stable.latest.default.override {
           extensions = [ "rust-analyzer" ];
