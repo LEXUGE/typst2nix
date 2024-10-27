@@ -60,7 +60,10 @@
 
 
         # Control root with `src`, control the entry point with `path`
-        buildTypstDoc = { pkgs, pname, version, src, path, ext ? "pdf" }:
+        buildTypstDoc = { pkgs, pname, version, src, path, ext ? "pdf", inputs ? { } }:
+          let
+            convertedInputs = foldr (a: b: a + " " + b) "" (mapAttrsToList (n: v: "--input " + n + "=" + v) inputs);
+          in
           (pkgs.stdenv.mkDerivation rec {
             inherit pname version src;
 
@@ -72,7 +75,7 @@
 
             buildPhase = ''
               mkdir $out
-              typst compile ${path} $out/${pname}.${ext} --root .
+              typst compile ${path} $out/${pname}.${ext} --root . ${convertedInputs}
             '';
           });
 
